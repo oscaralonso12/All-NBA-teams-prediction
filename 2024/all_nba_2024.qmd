@@ -568,9 +568,8 @@ library(gt)
 
 # data processing
 all_nba_2023 <- all_nba_2023 |> 
-  select(season_start_year, player, pos, tm, final_probs) |> 
-  mutate(season_start_year = paste0(as.character(season_start_year),"-2024"),
-         all_nba_team = case_when(
+  select(player, pos, tm, final_probs) |> 
+  mutate(all_nba_team = case_when(
            row_number() <= 5 ~ "1st Team",
            row_number() > 5 & row_number() <= 10 ~ "2nd Team",
            row_number() > 10 ~ "3rd Team"
@@ -582,9 +581,8 @@ gt_tbl <- gt(all_nba_2023)
 
 # format table
 gt_tbl |> 
-  gt::tab_header("All-NBA 2023 Team Predictions") |> 
+  gt::tab_header(md("**All-NBA 2023-2024 Team Predictions**")) |> 
   gt::cols_label(
-    season_start_year = md("**Season**"),
     all_nba_team = md("**All-NBA Team**"),
     player = md("**Player**"),
     pos = md("**Position**"),
@@ -593,6 +591,11 @@ gt_tbl |>
   ) |> 
   cols_align(
     align = "center"
+  ) |> 
+  data_color(
+    columns = all_nba_team,
+    target_columns = everything(),
+    palette = "Blues"
   )
 
 
