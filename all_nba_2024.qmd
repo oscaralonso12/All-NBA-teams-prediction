@@ -1,0 +1,593 @@
+---
+title: "all_nba_2024"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries
+
+```{r}
+library(tidyverse)
+```
+
+## Importing data and cleaning
+
+#### Per 100 possession data cleaning function
+
+```{r}
+# importing and cleaning per_100 data
+### NOT WEIGHING DATA HERE, SO GAME IN OCT IS SAME AS GAME IN MAY/APRIL
+per_100_import_and_cleaning <- function(first_season_start_year = 1979,
+                                        last_season_start_year) {
+  # creating empty dataframe to append all clean dfs to
+  per_100_all <- data.frame()
+
+  # for loop to import all seasons
+  for (year in first_season_start_year:last_season_start_year) {
+    # creating data path to be able to import all csvs saved
+    data_path <- paste0("data/per_100_", year, ".csv")
+
+    # reading in specified season in the for loop
+    df <- read_csv(data_path)
+
+    # data cleaning
+    df <- df |>
+      # removing Rk column
+      select(-Rk) |>
+      # grouping by players
+      group_by(Player) |>
+      filter(
+        # filter players with "TOT" or players who haved played for one team
+        Tm == "TOT" | n_distinct(Tm) <= 1
+      ) |>
+      # ungrouping data
+      ungroup() |>
+      mutate(
+        # normalizing data from 0-10
+        across(where(is.numeric),
+          ~ (10 * (. - min(., na.rm = T)) / (max(., na.rm = T) - min(., na.rm = T))),
+          .names = "{col}_normalized"
+        ),
+        # adding season start year
+        season_start_year = year
+      ) |>
+      # relocating season_start_year to first column
+      relocate(season_start_year)
+
+    # append df to per_100_all df
+    per_100_all <- bind_rows(per_100_all, df)
+  }
+  return(per_100_all)
+}
+```
+
+#### Advanced stats data cleaning function
+
+```{r}
+# importing and cleaning advanced stats data
+### NOT WEIGHING DATA HERE, SO GAME IN OCT IS SAME AS GAME IN MAY/APRIL
+adv_stats_import_and_cleaning <- function(first_season_start_year = 1979,
+                                          last_season_start_year) {
+  # creating empty dataframe to append all clean dfs to
+  adv_stats_all <- data.frame()
+
+  # for loop to import all seasons
+  for (year in first_season_start_year:last_season_start_year) {
+    # creating data path to be able to import all csvs saved
+    data_path <- paste0("data/adv_", year, ".csv")
+
+    # reading in specified season in the for loop
+    df <- read_csv(data_path)
+
+    # data cleaning
+    df <- df |>
+      # removing Rk column
+      select(-Rk) |>
+      # grouping by players
+      group_by(Player) |>
+      filter(
+        # filter players with "TOT" or players who haved played for one team
+        Tm == "TOT" | n_distinct(Tm) <= 1
+      ) |>
+      # ungrouping data
+      ungroup() |>
+      mutate(
+        # normalizing data from 0-10
+        across(where(is.numeric),
+          ~ (10 * (. - min(., na.rm = T)) / (max(., na.rm = T) - min(., na.rm = T))),
+          .names = "{col}_normalized"
+        ),
+        # adding season start year
+        season_start_year = year
+      ) |>
+      # relocating season_start_year to first column
+      relocate(season_start_year)
+
+    # append df to per_100_all df
+    adv_stats_all <- bind_rows(adv_stats_all, df)
+  }
+  return(adv_stats_all)
+}
+```
+
+#### Reading and combining cleaned data
+
+```{r}
+# reading in per 100 possession data from 1973-2023
+per_100_79_23 <- per_100_import_and_cleaning(last_season_start_year = 2023) |>
+  janitor::clean_names()
+
+# reading in advanced stats data from 1973-2023
+adv_stats_79_23 <- adv_stats_import_and_cleaning(last_season_start_year = 2023) |>
+  janitor::clean_names()
+
+# joining two datasets
+full_data <- per_100_79_23 |> left_join(adv_stats_79_23, by = c(
+  "season_start_year",
+  "player", "pos", "age",
+  "tm", "g", "mp",
+  "player_additional",
+  "age_normalized",
+  "g_normalized",
+  "mp_normalized"
+))
+
+# exporting data as csv
+# write_csv(full_data, "data/per_100_and_adv_79_23.csv")
+```
+
+## Data processing
+
+#### Creating All-NBA dummies since the 1979-80 season
+
+```{r}
+# import full data
+full_data <- read_csv("data/per_100_and_adv_79_23.csv")
+
+# using this to find player_additional of all-nba players
+# full_data |> 
+#   filter(season_start_year == 2023,
+#          str_detect(player, "(?i)sabonis")) |> 
+#   select(season_start_year, player, player_additional)
+
+# creating vectors for all-nba teams 1979-2022
+all_nba_2022 <- c("antetgi01", "doncilu01", "embiijo01", "gilgesh01", "tatumja01",
+                  "brownja02", "butleji01", "curryst01", "jokicni01", "mitchdo01",
+                  "foxde01", "jamesle01", "lillada01", "randlju01", "sabondo01")
+
+all_nba_2021 <- c("antetgi01", "bookede01", "doncilu01", "jokicni01", "tatumja01",
+                  "curryst01", "derozde01", "duranke01", "embiijo01", "moranja01",
+                  "jamesle01", "paulch01", "siakapa01", "townska01", "youngtr01")
+
+all_nba_2020 <- c("antetgi01", "curryst01", "doncilu01", "jokicni01", "leonaka01",
+                  "embiijo01", "jamesle01", "lillada01", "paulch01", "randlju01",
+                  "bealbr01", "butleji01", "georgpa01", "goberru01", "irvinky01")
+
+all_nba_2019 <- c("antetgi01", "davisan02", "doncilu01", "hardeja01", "jamesle01",
+                  "jokicni01", "leonaka01", "lillada01", "paulch01", "siakapa01",
+                  "butleji01", "goberru01", "simmobe01", "tatumja01", "westbru01")
+
+all_nba_2018 <- c("antetgi01", "curryst01", "georgpa01", "hardeja01", "jokicni01",
+                  "duranke01", "embiijo01", "irvinky01", "leonaka01", "lillada01",
+                  "goberru01", "griffbl01", "jamesle01", "walkeke02", "westbru01")
+
+all_nba_2017 <- c("davisan02", "duranke01", "hardeja01", "jamesle01", "lillada01",
+                  "aldrila01", "antetgi01", "derozde01", "embiijo01", "westbru01",
+                  "butleji01", "curryst01", "georgpa01", "oladivi01", "townska01")
+
+all_nba_2016 <- c("davisan02", "hardeja01", "jamesle01", "leonaka01", "westbru01",
+                  "antetgi01", "curryst01", "duranke01", "goberru01", "thomais02",
+                  "butleji01", "derozde01", "greendr01", "jordade01", "walljo01")
+
+all_nba_2015 <- c("curryst01", "jamesle01", "jordade01", "leonaka01", "westbru01",
+                  "couside01", "duranke01", "greendr01", "lillada01", "paulch01",
+                  "aldrila01", "drumman01", "georgpa01", "lowryky01", "thompkl01")
+
+all_nba_2014 <- c("curryst01", "davisan02", "gasolma01", "hardeja01", "jamesle01",
+                  "aldrila01", "couside01", "gasolpa01", "paulch01", "westbru01",
+                  "duncati01", "griffbl01", "irvinky01", "jordade01", "thompkl01")
+
+all_nba_2013 <- c("duranke01", "hardeja01", "jamesle01", "noahjo01", "paulch01",
+                  "curryst01", "griffbl01", "howardw01", "loveke01", "parketo01",
+                  "aldrila01", "dragigo01", "georgpa01", "jeffeal01", "lillada01")
+
+all_nba_2012 <- c("bryanko01", "duncati01", "duranke01", "jamesle01", "paulch01",
+                  "anthoca01", "gasolma01", "griffbl01", "parketo01", "westbru01",
+                  "georgpa01", "hardeja01", "howardw01", "leeda02", "wadedw01")
+
+all_nba_2011 <- c("bryanko01", "duranke01", "howardw01", "jamesle01", "paulch01",
+                  "bynuman01", "griffbl01", "loveke01", "parketo01", "westbru01",
+                  "anthoca01", "chandty01", "nowitdi01", "rondora01", "wadedw01")
+
+all_nba_2010 <- c("bryanko01", "duranke01", "howardw01", "jamesle01", "rosede01",
+                  "gasolpa01", "nowitdi01", "stoudam01", "wadedw01", "westbru01",
+                  "aldrila01", "ginobma01", "horfoal01", "paulch01", "randoza01")
+
+all_nba_2009 <- c("bryanko01", "duranke01", "howardw01", "jamesle01", "wadedw01",
+                  "anthoca01", "nashst01", "nowitdi01", "stoudam01", "willide01",
+                  "bogutan01", "duncati01", "gasolpa01", "johnsjo02", "roybr01")
+
+all_nba_2008 <- c("bryanko01", "howardw01", "jamesle01", "nowitdi01", "wadedw01",
+                  "duncati01", "mingya01", "paulch01", "piercpa01", "roybr01",
+                  "anthoca01", "billuch01", "gasolpa01", "onealsh01", "parketo01")
+
+all_nba_2007 <- c("bryanko01", "garneke01", "howardw01", "jamesle01", "paulch01",
+                  "duncati01", "nashst01", "nowitdi01", "stoudam01", "willide01",
+                  "boozeca01", "ginobma01", "mcgratr01", "mingya01", "piercpa01")
+
+all_nba_2006 <- c("bryanko01", "duncati01", "nashst01", "nowitdi01", "stoudam01",
+                  "arenagi01", "boshch01", "jamesle01", "mcgratr01", "mingya01",
+                  "anthoca01", "billuch01", "garneke01", "howardw01", "wadedw01")
+
+all_nba_2005 <- c("bryanko01", "jamesle01", "nashst01", "nowitdi01", "onealsh01",
+                  "billuch01", "brandel01", "duncati01", "wadedw01", "wallabe01",
+                  "anthoca01", "arenagi01", "iversal01", "mariosh01", "mingya01")
+
+all_nba_2004 <- c("duncati01", "iversal01", "nashst01", "nowitdi01", "onealsh01",
+                  "allenra02", "garneke01", "jamesle01", "stoudam01", "wadedw01",
+                  "arenagi01", "bryanko01", "mariosh01", "mcgratr01", "wallabe01")
+
+all_nba_2003 <- c("bryanko01", "duncati01", "garneke01", "kiddja01", "onealsh01",
+                  "cassesa01", "mcgratr01", "onealje01", "stojape01", "wallabe01",
+                  "artesro01", "davisba01", "mingya01", "nowitdi01", "reddmi01")
+
+all_nba_2002 <- c("bryanko01", "duncati01", "garneke01", "mcgratr01", "onealsh01",
+                  "iversal01", "kiddja01", "nowitdi01", "wallabe01", "webbech01",
+                  "marbust01", "mashbja01", "nashst01", "onealje01", "piercpa01")
+
+all_nba_2001 <- c("bryanko01", "duncati01", "kiddja01", "mcgratr01", "onealsh01",
+                  "garneke01", "iversal01", "nowitdi01", "paytoga01", "webbech01",
+                  "mutomdi01", "nashst01", "onealje01", "piercpa01", "wallabe01")
+
+all_nba_2000 <- c("duncati01", "iversal01", "kiddja01", "onealsh01", "webbech01",
+                  "bryanko01", 'cartevi01', "garneke01", "mcgratr01", "mutomdi01",
+                  "allenra02", "malonka01", "nowitdi01", "paytoga01", "robinda01")
+
+all_nba_1999 <- c("duncati01", "garneke01", "kiddja01", "onealsh01", "paytoga01",
+                  "bryanko01", "hillgr01", "iversal01", "malonka01", "mournal01",
+                  "cartevi01", "jonesed02", "marbust01", "robinda01", "webbech01")
+
+all_nba_1998 <- c("duncati01", "iversal01", "kiddja01", "malonka01", "mournal01",
+                  "hardati01", "hillgr01", "onealsh01", "paytoga01", "webbech01",
+                  "bryanko01", "garneke01", "mcdyean01", "olajuha01", "stockjo01")
+
+all_nba_1997 <- c("duncati01", "jordami01", "malonka01", "onealsh01", "paytoga01",
+                  "bakervi01", "hardati01", "hillgr01", "robinda01", "stricro02",
+                  "millere01", "mutomdi01", "pippesc01", "ricegl01", "richmmi01")
+
+all_nba_1996 <- c("hardati01", "hillgr01", "jordami01", "malonka01", "olajuha01",
+                  "ewingpa01", "paytoga01", "pippesc01", "ricegl01", "richmmi01",
+                  "bakervi01", "hardaan01", "masonan01", "onealsh01", "stockjo01")
+
+all_nba_1995 <- c("hardaan01", "jordami01", "malonka01", "pippesc01", "robinda01",
+                  "hillgr01", "kempsh01", "olajuha01", "paytoga01", "stockjo01",
+                  "barklch01", "howarju01", "millere01", "onealsh01", "richmmi01")
+
+all_nba_1994 <- c("hardaan01", "malonka01", "pippesc01", "robinda01", "stockjo01",
+                  "barklch01", "kempsh01", "onealsh01", "paytoga01", "richmmi01",
+                  "drexlcl01", "millere01", "olajuha01", "rodmade01", "schrede01")
+
+all_nba_1993 <- c("malonka01", "olajuha01", "pippesc01", "sprewla01", "stockjo01",
+                  "barklch01", "johnske02", "kempsh01", "richmmi01", "robinda01",
+                  "colemde01", "onealsh01", "paytoga01", "pricema01", "wilkido01")
+
+all_nba_1992 <- c("barklch01", "jordami01", "malonka01", "olajuha01", "pricema01",
+                  "dumarjo01", "ewingpa01", "johnsla02", "stockjo01", "wilkido01",
+                  "colemde01", "hardati01", "petrodr01", "pippesc01", "robinda01")
+
+all_nba_1991 <- c("drexlcl01", "jordami01", "malonka01", "mullich01", "robinda01",
+                  "barklch01", "ewingpa01", "hardati01", "pippesc01", "stockjo01",
+                  "daughbr01", "johnske02", "pricema01", "rodmade01", "willike02")
+
+all_nba_1990 <- c("barklch01", "johnsma02", "jordami01", "malonka01", "robinda01",
+                  "drexlcl01", "ewingpa01", "johnske02", "mullich01", "wilkido01",
+                  "dumarjo01", "kingbe01", "olajuha01", "stockjo01", "worthja01")
+
+all_nba_1989 <- c("barklch01", "ewingpa01", "johnsma02", "jordami01", "malonka01",
+                  "birdla01", "chambto01", "johnske02", "olajuha01", "stockjo01",
+                  "drexlcl01", "dumarjo01", "mullich01", "robinda01", "worthja01")
+
+all_nba_1988 <- c("barklch01", "johnsma02", "jordami01", "malonka01", "olajuha01",
+                  "chambto01", "ewingpa01", "johnske02", "mullich01", "stockjo01",
+                  "cummite01", "ellisda01", "parisro01", "pricema01", "wilkido01")
+
+all_nba_1987 <- c("barklch01", "birdla01", "johnsma02", "jordami01", "olajuha01",
+                  "drexlcl01", "ewingpa01", "malonka01", "stockjo01", "wilkido01")
+
+all_nba_1986 <- c("birdla01", "johnsma02", "jordami01", "mchalke01", "olajuha01",
+                  "barklch01", "leverfa01", "malonmo01", "thomais01", "wilkido01")
+
+all_nba_1985 <- c("abdulka01", "birdla01", "johnsma02", "thomais01", "wilkido01",
+                  "barklch01", "englial01", "moncrsi01", "olajuha01", "roberal01")
+
+all_nba_1984 <- c("birdla01", "johnsma02", "kingbe01", "malonmo01", "thomais01",
+                  "abdulka01", "cummite01", "jordami01", "moncrsi01", "sampsra01")
+
+all_nba_1983 <- c("abdulka01", "birdla01", "johnsma02", "kingbe01", "thomais01",
+                  "dantlad01", "ervinju01", "malonmo01", "moncrsi01", "paxsoji02")
+
+all_nba_1982 <- c("birdla01", "ervinju01", "johnsma02", "malonmo01", "moncrsi01",
+                  "abdulka01", "englial01", "gervige01", "thomais01", "willibu01")
+
+all_nba_1981 <- c("birdla01", "ervinju01", "gervige01", "malonmo01", "willigu01",
+                  "englial01", "johnsma02", "kingbe01", "moncrsi01", "parisro01")
+
+all_nba_1980 <- c("abdulka01", "birdla01", "ervinju01", "gervige01", "johnsde01",
+                  "architi01", "birdsot01", "dantlad01", "johnsma01", "malonmo01")
+
+all_nba_1979 <- c("abdulka01", "birdla01", "ervinju01", "gervige01", "westppa01",
+                  "johnsde01", "johnsma01", "malonmo01", "roundda01", "willigu01")
+
+
+
+
+# flagging all-nba players for 1979-2022 seasons
+full_data <- full_data |> 
+  mutate(
+    all_nba_dummy = case_when(
+      season_start_year == 1979 & player_additional %in% all_nba_1979 ~ 1,
+      season_start_year == 1980 & player_additional %in% all_nba_1980 ~ 1,
+      season_start_year == 1981 & player_additional %in% all_nba_1981 ~ 1,
+      season_start_year == 1982 & player_additional %in% all_nba_1982 ~ 1,
+      season_start_year == 1983 & player_additional %in% all_nba_1983 ~ 1,
+      season_start_year == 1984 & player_additional %in% all_nba_1984 ~ 1,
+      season_start_year == 1985 & player_additional %in% all_nba_1985 ~ 1,
+      season_start_year == 1986 & player_additional %in% all_nba_1986 ~ 1,
+      season_start_year == 1987 & player_additional %in% all_nba_1987 ~ 1,
+      season_start_year == 1988 & player_additional %in% all_nba_1988 ~ 1,
+      season_start_year == 1989 & player_additional %in% all_nba_1989 ~ 1,
+      season_start_year == 1990 & player_additional %in% all_nba_1990 ~ 1,
+      season_start_year == 1991 & player_additional %in% all_nba_1991 ~ 1,
+      season_start_year == 1992 & player_additional %in% all_nba_1992 ~ 1,
+      season_start_year == 1993 & player_additional %in% all_nba_1993 ~ 1,
+      season_start_year == 1994 & player_additional %in% all_nba_1994 ~ 1,
+      season_start_year == 1995 & player_additional %in% all_nba_1995 ~ 1,
+      season_start_year == 1996 & player_additional %in% all_nba_1996 ~ 1,
+      season_start_year == 1997 & player_additional %in% all_nba_1997 ~ 1,
+      season_start_year == 1998 & player_additional %in% all_nba_1998 ~ 1,
+      season_start_year == 1999 & player_additional %in% all_nba_1999 ~ 1,
+      season_start_year == 2000 & player_additional %in% all_nba_2000 ~ 1,
+      season_start_year == 2001 & player_additional %in% all_nba_2001 ~ 1,
+      season_start_year == 2002 & player_additional %in% all_nba_2002 ~ 1,
+      season_start_year == 2003 & player_additional %in% all_nba_2003 ~ 1,
+      season_start_year == 2004 & player_additional %in% all_nba_2004 ~ 1,
+      season_start_year == 2005 & player_additional %in% all_nba_2005 ~ 1,
+      season_start_year == 2006 & player_additional %in% all_nba_2006 ~ 1,
+      season_start_year == 2007 & player_additional %in% all_nba_2007 ~ 1,
+      season_start_year == 2008 & player_additional %in% all_nba_2008 ~ 1,
+      season_start_year == 2009 & player_additional %in% all_nba_2009 ~ 1,
+      season_start_year == 2010 & player_additional %in% all_nba_2010 ~ 1,
+      season_start_year == 2011 & player_additional %in% all_nba_2011 ~ 1,
+      season_start_year == 2012 & player_additional %in% all_nba_2012 ~ 1,
+      season_start_year == 2013 & player_additional %in% all_nba_2013 ~ 1,
+      season_start_year == 2014 & player_additional %in% all_nba_2014 ~ 1,
+      season_start_year == 2015 & player_additional %in% all_nba_2015 ~ 1,
+      season_start_year == 2016 & player_additional %in% all_nba_2016 ~ 1,
+      season_start_year == 2017 & player_additional %in% all_nba_2017 ~ 1,
+      season_start_year == 2018 & player_additional %in% all_nba_2018 ~ 1,
+      season_start_year == 2019 & player_additional %in% all_nba_2019 ~ 1,
+      season_start_year == 2020 & player_additional %in% all_nba_2020 ~ 1,
+      season_start_year == 2021 & player_additional %in% all_nba_2021 ~ 1,
+      season_start_year == 2022 & player_additional %in% all_nba_2022 ~ 1,
+      .default = 0
+    )
+  )
+
+# exporting data as csv
+# write_csv(full_data, "data/per_100_and_adv_79_23.csv")
+```
+
+#### QA data
+
+```{r}
+# cross reference all-nba dummies for each year with bball ref
+full_data |> 
+  filter(season_start_year == 1988,
+         all_nba_dummy == 1)
+
+# all all-nba teams matched with bball ref
+
+# making sure we only get 10 up until 1987 and then 15 >= 1988 
+for (year in 1979:2023) {
+  full_data |> 
+  filter(season_start_year == year,
+         all_nba_dummy == 1) |> count() |> print(year)
+}
+```
+
+## Modeling
+
+#### EDA
+
+```{r}
+# import full data
+full_data <- read_csv("data/per_100_and_adv_79_23.csv")
+
+# get training data
+training_df <- full_data |> 
+  filter(
+    season_start_year != 2023
+  )
+
+# get test data
+test_df <- full_data |> 
+  filter(
+    season_start_year == 2023,
+    # new games requirement, must play at least 65 games
+    g >= 65
+  )
+
+# plotting distributions of training data
+# variables of interest
+
+box_plots_func <- function(df, variable_of_interest, variable_of_interest_clean) {
+  variable_of_interest_clean <- as.character(variable_of_interest_clean)
+  
+  df |> 
+  ggplot(aes({{ variable_of_interest }}, group = all_nba_dummy)) +
+  geom_boxplot(aes(fill = as.factor(all_nba_dummy))) +
+  scale_fill_discrete(name = "All-NBA Indicator",
+                      labels = c("Non All-NBA", "All-NBA")) +
+  labs(title = variable_of_interest_clean,
+       x = NULL) +
+    theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y.left = element_blank())
+}
+
+# 1. age_normalized
+p_age <- box_plots_func(training_df, training_df$age_normalized, "Age Normalized")
+
+# 2. offensive rating o_rtg_normalized
+p_ortg <- box_plots_func(training_df, training_df$o_rtg_normalized, "Offensive Rating Normalized")
+
+# 3. defensive rating d_rtg_normalized
+p_drtg <- box_plots_func(training_df, training_df$d_rtg_normalized, "Defensive Rating Normalized")
+
+# 4. PER normalized
+p_per <- box_plots_func(training_df, training_df$per_normalized, "PER Normalized")
+
+# 5. True Shooting % normalized
+p_tspct <- box_plots_func(training_df, training_df$ts_percent_normalized, "True Shooting % Normalized")
+
+# 6. Free throw rate normalized
+p_ftr <- box_plots_func(training_df, training_df$f_tr_normalized, "Free Throw Rate Normalized")
+
+# 7. usage % normalized
+p_usage_pct <- box_plots_func(training_df, training_df$usg_percent_normalized, "Usage % Normalized")
+
+# 8. winshare per 48 normalized
+p_winshare_48 <- box_plots_func(training_df, training_df$ws_48_normalized, "Win Share / 48 Normalized")
+
+# 9. vorp normalized
+p_vorp <- box_plots_func(training_df, training_df$vorp_normalized, "VORP Normalized")
+
+ggpubr::ggarrange(p_age, p_ortg, p_drtg,
+             p_per, p_tspct, p_ftr,
+             p_usage_pct, p_winshare_48, p_winshare_48,
+             common.legend = T, legend = "bottom")
+
+# what correlates the most with all-nba dummy = 1
+training_df |>
+  select(
+     all_nba_dummy, pts_normalized, ast_normalized, trb_normalized, 
+    stl_normalized, blk_normalized, per_normalized,
+    ts_percent_normalized, usg_percent_normalized, ws_normalized
+  ) |>
+  filter(across(everything(), ~ !is.na(.))) |> 
+  cor() |>
+  ggcorrplot::ggcorrplot()
+
+
+```
+
+#### Bootstrap model
+
+```{r}
+# https://www.rdocumentation.org/packages/rsample/versions/1.2.1/topics/bootstraps
+
+# setting up df
+traning_df_2 <- training_df |>
+  select(
+    all_nba_dummy, pts_normalized, ast_normalized, trb_normalized, 
+    stl_normalized, blk_normalized, per_normalized,
+    ts_percent_normalized, usg_percent_normalized, ws_normalized
+  )
+
+training_df_2 |> View()
+
+
+set.seed(562)
+# step 1: bootstrap the data
+boot_data <- rsample::bootstraps(traning_df_2, times = 1000)
+
+# step 2: fit probit model
+boot_models <- boot_data |> 
+  mutate(model = map(splits, ~glm(all_nba_dummy ~ 0 +  pts_normalized + 
+                                    ast_normalized + trb_normalized +
+                                    stl_normalized + blk_normalized + 
+                                    per_normalized + ts_percent_normalized +
+                                    usg_percent_normalized + ws_normalized,
+                                  family = binomial(link = "probit"),
+                                  data = .)),
+         coefs = map(model, broom::tidy))
+
+# step 3: plot distribution of estimates
+boot_coefs <- boot_models |> 
+  unnest(coefs) |> 
+  select(term, estimate)
+
+boot_coefs |> 
+  ggplot(aes(estimate)) +
+  geom_histogram() +
+  facet_wrap(~ term, scales = "free")
+
+# step 4: get predictions
+# Function to predict probabilities for each model and combine them
+predict_probs <- function(model, newdata) {
+  predict(model, newdata = newdata, type = "response")
+}
+
+
+# Predict probabilities for each model
+predicted_probs <- boot_models |> 
+  mutate(preds = map(model, ~predict_probs(., newdata = test_df))) |> 
+  select(preds)
+
+# Combine probabilities across models (using median)
+final_probs <- predicted_probs |> 
+  unnest(preds) |> 
+  mutate(row_numbers = row_number() - 1,
+         row_numbers_reset = ((row_numbers %% 184) + 1)) |>
+  group_by(row_numbers_reset) |> 
+  summarize(median_pred = median(preds)) |> 
+  mutate(median_pred = round(median_pred, 4))
+  
+
+# Classify as All-NBA player based on the threshold
+test_df$final_probs <- final_probs$median_pred
+
+all_nba_2023 <- test_df |> arrange(-final_probs) |> head(15)
+
+```
+
+## Create Table
+
+```{r}
+# importing library
+library(gt)
+
+# data processing
+all_nba_2023 <- all_nba_2023 |> 
+  select(season_start_year, player, pos, tm, final_probs) |> 
+  mutate(season_start_year = paste0(as.character(season_start_year),"-2024"),
+         all_nba_team = case_when(
+           row_number() <= 5 ~ "1st Team",
+           row_number() > 5 & row_number() <= 10 ~ "2nd Team",
+           row_number() > 10 ~ "3rd Team"
+         )) |> 
+  relocate(all_nba_team, .before = player)
+
+# create table
+gt_tbl <- gt(all_nba_2023) 
+
+# format table
+gt_tbl |> 
+  gt::tab_header("All-NBA 2023 Team Predictions") |> 
+  gt::cols_label(
+    season_start_year = md("**Season**"),
+    all_nba_team = md("**All-NBA Team**"),
+    player = md("**Player**"),
+    pos = md("**Position**"),
+    tm = md("**Team**"),
+    final_probs = md("**All-NBA Probability**")
+  ) |> 
+  cols_align(
+    align = "center"
+  )
+
+```
+
+\
