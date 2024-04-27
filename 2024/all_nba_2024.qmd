@@ -500,7 +500,7 @@ Bootstrap model
 # https://www.rdocumentation.org/packages/rsample/versions/1.2.1/topics/bootstraps
 
 # setting up df
-traning_df <- training_df |>
+trainng_df <- training_df |>
   select(
     all_nba_dummy, pts_normalized, ast_normalized, trb_normalized, 
     stl_normalized, blk_normalized, per_normalized,
@@ -509,7 +509,7 @@ traning_df <- training_df |>
 
 set.seed(562)
 # step 1: bootstrap the data
-boot_data <- rsample::bootstraps(traning_df, times = 1000)
+boot_data <- rsample::bootstraps(trainng_df, times = 1000)
 
 # step 2: fit probit model
 boot_models <- boot_data |> 
