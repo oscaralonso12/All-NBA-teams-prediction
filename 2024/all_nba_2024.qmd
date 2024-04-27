@@ -6,17 +6,16 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Libraries
+Libraries
 
-```{r}
+{r}
 library(tidyverse)
-```
 
-## Importing data and cleaning
+Importing data and cleaning
 
-#### Per 100 possession data cleaning function
+Per 100 possession data cleaning function
 
-```{r}
+{r}
 # importing and cleaning per_100 data
 ### NOT WEIGHING DATA HERE, SO GAME IN OCT IS SAME AS GAME IN MAY/APRIL
 per_100_import_and_cleaning <- function(first_season_start_year = 1979,
@@ -61,11 +60,10 @@ per_100_import_and_cleaning <- function(first_season_start_year = 1979,
   }
   return(per_100_all)
 }
-```
 
-#### Advanced stats data cleaning function
+Advanced stats data cleaning function
 
-```{r}
+{r}
 # importing and cleaning advanced stats data
 ### NOT WEIGHING DATA HERE, SO GAME IN OCT IS SAME AS GAME IN MAY/APRIL
 adv_stats_import_and_cleaning <- function(first_season_start_year = 1979,
@@ -110,11 +108,10 @@ adv_stats_import_and_cleaning <- function(first_season_start_year = 1979,
   }
   return(adv_stats_all)
 }
-```
 
-#### Reading and combining cleaned data
+Reading and combining cleaned data
 
-```{r}
+{r}
 # reading in per 100 possession data from 1973-2023
 per_100_79_23 <- per_100_import_and_cleaning(last_season_start_year = 2023) |>
   janitor::clean_names()
@@ -136,13 +133,12 @@ full_data <- per_100_79_23 |> left_join(adv_stats_79_23, by = c(
 
 # exporting data as csv
 # write_csv(full_data, "data/per_100_and_adv_79_23.csv")
-```
 
-## Data processing
+Data processing
 
-#### Creating All-NBA dummies since the 1979-80 season
+Creating All-NBA dummies since the 1979-80 season
 
-```{r}
+{r}
 # import full data
 full_data <- read_csv("data/per_100_and_adv_79_23.csv")
 
@@ -377,11 +373,10 @@ full_data <- full_data |>
 
 # exporting data as csv
 # write_csv(full_data, "data/per_100_and_adv_79_23.csv")
-```
 
-#### QA data
+QA data
 
-```{r}
+{r}
 # cross reference all-nba dummies for each year with bball ref
 full_data |> 
   filter(season_start_year == 1988,
@@ -395,13 +390,12 @@ for (year in 1979:2023) {
   filter(season_start_year == year,
          all_nba_dummy == 1) |> count() |> print(year)
 }
-```
 
-## Modeling
+Modeling
 
-#### EDA
+EDA
 
-```{r}
+{r}
 # import full data
 full_data <- read_csv("data/per_100_and_adv_79_23.csv")
 
@@ -438,35 +432,53 @@ box_plots_func <- function(df, variable_of_interest, variable_of_interest_clean)
 }
 
 # 1. age_normalized
-p_age <- box_plots_func(training_df, training_df$age_normalized, "Age Normalized")
+p_age <- box_plots_func(training_df,
+                        training_df$age_normalized,
+                        "Age Normalized")
 
 # 2. offensive rating o_rtg_normalized
-p_ortg <- box_plots_func(training_df, training_df$o_rtg_normalized, "Offensive Rating Normalized")
+p_ortg <- box_plots_func(training_df, 
+                         training_df$o_rtg_normalized,
+                         "Offensive Rating Normalized")
 
 # 3. defensive rating d_rtg_normalized
-p_drtg <- box_plots_func(training_df, training_df$d_rtg_normalized, "Defensive Rating Normalized")
+p_drtg <- box_plots_func(training_df, 
+                         training_df$d_rtg_normalized, 
+                         "Defensive Rating Normalized")
 
 # 4. PER normalized
-p_per <- box_plots_func(training_df, training_df$per_normalized, "PER Normalized")
+p_per <- box_plots_func(training_df, 
+                        training_df$per_normalized, 
+                        "PER Normalized")
 
 # 5. True Shooting % normalized
-p_tspct <- box_plots_func(training_df, training_df$ts_percent_normalized, "True Shooting % Normalized")
+p_tspct <- box_plots_func(training_df, 
+                          training_df$ts_percent_normalized, 
+                          "True Shooting % Normalized")
 
 # 6. Free throw rate normalized
-p_ftr <- box_plots_func(training_df, training_df$f_tr_normalized, "Free Throw Rate Normalized")
+p_ftr <- box_plots_func(training_df,
+                        training_df$f_tr_normalized, 
+                        "Free Throw Rate Normalized")
 
 # 7. usage % normalized
-p_usage_pct <- box_plots_func(training_df, training_df$usg_percent_normalized, "Usage % Normalized")
+p_usage_pct <- box_plots_func(training_df, 
+                              training_df$usg_percent_normalized, 
+                              "Usage % Normalized")
 
 # 8. winshare per 48 normalized
-p_winshare_48 <- box_plots_func(training_df, training_df$ws_48_normalized, "Win Share / 48 Normalized")
+p_winshare_48 <- box_plots_func(training_df, 
+                                training_df$ws_48_normalized, 
+                                "Win Share / 48 Normalized")
 
 # 9. vorp normalized
-p_vorp <- box_plots_func(training_df, training_df$vorp_normalized, "VORP Normalized")
+p_vorp <- box_plots_func(training_df,
+                         training_df$vorp_normalized, 
+                         "VORP Normalized")
 
 ggpubr::ggarrange(p_age, p_ortg, p_drtg,
              p_per, p_tspct, p_ftr,
-             p_usage_pct, p_winshare_48, p_winshare_48,
+             p_usage_pct, p_winshare_48, p_vorp,
              common.legend = T, legend = "bottom")
 
 # what correlates the most with all-nba dummy = 1
@@ -476,32 +488,28 @@ training_df |>
     stl_normalized, blk_normalized, per_normalized,
     ts_percent_normalized, usg_percent_normalized, ws_normalized
   ) |>
-  filter(across(everything(), ~ !is.na(.))) |> 
+  na.omit() |> 
   cor() |>
   ggcorrplot::ggcorrplot()
 
 
-```
 
-#### Bootstrap model
+Bootstrap model
 
-```{r}
+{r}
 # https://www.rdocumentation.org/packages/rsample/versions/1.2.1/topics/bootstraps
 
 # setting up df
-traning_df_2 <- training_df |>
+traning_df <- training_df |>
   select(
     all_nba_dummy, pts_normalized, ast_normalized, trb_normalized, 
     stl_normalized, blk_normalized, per_normalized,
     ts_percent_normalized, usg_percent_normalized, ws_normalized
   )
 
-training_df_2 |> View()
-
-
 set.seed(562)
 # step 1: bootstrap the data
-boot_data <- rsample::bootstraps(traning_df_2, times = 1000)
+boot_data <- rsample::bootstraps(traning_df, times = 1000)
 
 # step 2: fit probit model
 boot_models <- boot_data |> 
@@ -551,11 +559,10 @@ test_df$final_probs <- final_probs$median_pred
 
 all_nba_2023 <- test_df |> arrange(-final_probs) |> head(15)
 
-```
 
-## Create Table
+Create Table
 
-```{r}
+{r}
 # importing library
 library(gt)
 
@@ -588,6 +595,4 @@ gt_tbl |>
     align = "center"
   )
 
-```
 
-\
