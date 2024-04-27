@@ -8,7 +8,7 @@ The data used for this analysis was created by scraping box score, advanced stat
 ## Data Preparation
 - The full dataset is imported and split into training and test datasets.
 - Training data excludes the 2023-2024 season.
-- Test data includes only players who played at least 65 games in the 2023 season.
+- Test data includes only players who played at least 65 games in the 2023-2024 season.
 
 ## Model Building
 - The data is bootstrapped, and 1000 probit model are fitted to predict All-NBA selection.
