@@ -22,4 +22,5 @@ The data used for this analysis was created by scraping box score, advanced stat
 Based on the calculated probabilities, the top 15 players are identified and classified into All-NBA teams.
 
 ## Table of All-NBA 2023-2024 Team Predictions
-[![all_nba_2023-2024_preds](https://github.com/oscaralonso12/All-NBA-teams-prediction/assets/41983149/6809d008-764f-48b8-88b1-5859b9c12268)](https://github.com/oscaralonso12/All-NBA-teams-prediction/blob/main/2024/all_nba_2024.qmd)
+![all_nba_2023-2024_preds](https://github.com/oscaralonso12/All-NBA-teams-prediction/assets/41983149/e3cf4fd1-5e2e-4bdf-ac3b-ebaff1c566b8)
+
