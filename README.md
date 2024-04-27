@@ -4,6 +4,8 @@ This repository contains code for predicting the All-NBA teams for the 2023-2024
 
 ## Dataset
 The data used for this analysis was created by scraping box score, advanced stats, and historical All-NBA teams from Basketball Reference since the 1979 NBA season. The dataset includes various player statistics, including points, assists, rebounds, steals, blocks, player efficiency rating (PER), true shooting percentage (TS%), usage percentage (USG%), and win shares (WS). The analysis focuses on seasons starting from 1979 onwards, coinciding with the introduction of the NBA 3-point line.
+![features_by_all_nba_historical](https://github.com/oscaralonso12/All-NBA-teams-prediction/assets/41983149/bb018a0b-2d6e-4fca-a189-b23533d54476)
+
 
 ## Data Preparation
 - The full dataset is imported and split into training and test datasets.
