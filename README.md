@@ -7,7 +7,8 @@ The data used for this analysis was created by scraping box score, advanced stat
 ![features_by_all_nba_historical](https://github.com/oscaralonso12/All-NBA-teams-prediction/assets/41983149/e216e31a-ec5d-4d1e-a8f5-c3b58dd1ab1c)
 
 ## Data Preparation
-- The full dataset is imported and split into training and test datasets.
+- The data undergoes normalization on a season-by-season basis, with numerical values adjusted to fall within the range of 0 to 10 for each individual season.
+- The full dataset is split into training and test datasets.
 - Training data excludes the 2023-2024 season.
 - Test data includes only players who played at least 65 games in the 2023-2024 season.
 
