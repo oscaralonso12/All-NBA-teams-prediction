@@ -1,0 +1,200 @@
+---
+title: "2025_all_nba"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# import libraries
+```{r}
+library(tidyverse)
+library(brms)
+```
+
+# cleaning data
+## import data
+```{r}
+# data from last run
+df <- read_csv("~/Documents/Data Science/R/all_nba_project/2024/data/per_100_and_adv_79_23.csv")
+```
+
+
+## clean data (adding in 2023 All NBA players)
+```{r}
+# add in 2023 all-nba players
+all_nba_2023 <- c("gilgesh01", "jokicni01", "doncilu01", "antetgi01", "tatumja01",
+                  "brunsja01", "edwaran01", "duranke01", "leonaka01", "davisan02",
+                  "jamesle01", "curryst01", "sabondo01", "halibty01", "bookede01")
+
+# use this code to find player IDs
+df |> 
+  filter(str_like(player, "devin %"),
+         season_start_year == 2023) |> 
+  select(player, pos, age, tm, g, player_additional)
+
+# add in 2023 all nba team
+df <- df |> 
+  mutate(
+    all_nba_dummy = case_when(
+      season_start_year == 2023 & player_additional %in% all_nba_2023 ~ 1,
+      .default = all_nba_dummy
+    )
+  )
+
+# write_csv(df, "~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
+```
+
+
+## import data (with 2023 all-nba tags now added)
+```{r}
+# import data
+df <- read_csv("~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
+
+# sum (should equal 630 now)
+df$all_nba_dummy |> sum()
+
+# need to import per 100 and adv for 2024
+
+
+```
+
+## clean 1979 - 2023 data (removing normalized columns and replacing them with z-score columns)
+```{r}
+# remove normalized (0-1) columns and use z-scores instead
+z_score_func <- function(x, na.rm = FALSE) {
+  (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+  }
+
+# compute z-score for each season
+z_score_df <- df |> 
+  select(!ends_with("normalized")) |> 
+  group_by(season_start_year) |> 
+  mutate(across(
+    where(is.numeric),
+    ~ z_score_func(.x, na.rm = T),
+    .names = "z_score_{col}"
+  )) |>
+  ungroup() 
+
+z_score_df <- z_score_df |> select(-z_score_all_nba_dummy)
+
+# remove asteriks on players name
+z_score_df <- z_score_df |> 
+  mutate(player = str_replace(player, "\\*$", "")) 
+
+# write_csv(z_score_df, "~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
+
+
+
+```
+
+
+
+
+# import data
+```{r}
+# import data that now has
+# 1. 2023 All NBA team players
+# 2. z-scores instead of 0-1 normalized numeric columns
+df <- read_csv("~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
+```
+
+# TODO:
+# clean 2024 data
+```{r}
+# import data (per 100 and adv)
+
+
+# clean 2024 data (look at 2024 .qmd for cleaning reference)
+
+
+# append 2024 rows to df
+```
+
+
+# EDA
+## correlation to All NBA
+```{r}
+cor_info <- df |> select(starts_with("z_score"), all_nba_dummy) |> drop_na() |> cor()
+
+cor_df <- cor_info[, 48] |> as.data.frame()
+
+cor_df <- cor_df |> 
+  rownames_to_column(var = "metric") |> 
+  rename(cor_value = `cor_info[, 48]`)
+
+ggplot(data = cor_df, aes(x = fct_reorder(metric, cor_value), y = cor_value)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(cor_value, 2)), hjust = -0.25, color = "red", size = 4.5) +
+  scale_y_continuous(n.breaks = 10) +
+  coord_flip() +
+  labs(x = "Metric",
+       y = "Correlation to All NBA",
+       title = "All NBA Correlation",
+       subtitle = "Data from 1979 - 2023") +
+  ggthemes::theme_clean(base_size = 20, base_family = "Optima")
+```
+
+# see highly correlated metrics ranked by season
+```{r}
+df |> 
+  group_by(season_start_year) |> 
+  mutate(z_score_vorp_rank = dense_rank(desc(z_score_vorp))) |>
+  ungroup() |> 
+  filter(z_score_vorp_rank <= 25) |> 
+  select(season_start_year, player, vorp, z_score_vorp, z_score_vorp_rank, all_nba_dummy) |> 
+  arrange(-season_start_year, z_score_vorp_rank) |> View()
+
+```
+
+
+## best VORP, WS, PER, and BMP ever
+### NOTE VORP includes BMP so maybe have to drop it in model
+```{r}
+df |> 
+  mutate(label = paste0(season_start_year, ": ", player)) |> 
+  filter(z_score_mp > 0) |> 
+  arrange(-z_score_vorp) |>
+  head(25) |> 
+  ggplot(aes(x = fct_reorder(label, z_score_vorp), y = z_score_vorp)) +
+  geom_bar(stat = "identity") + 
+  coord_flip()
+```
+
+## plot VORP, WS, PER, and BMP by outcome variable
+```{r}
+df |> 
+  filter(z_score_mp >= 0,
+         season_start_year == 2023) |> 
+  ggplot(aes(x = 0.5, y = z_score_vorp)) +
+  geom_boxplot() +
+  geom_point(data = df |> filter(season_start_year == 2023), 
+             aes(x = 0.5, y = z_score_vorp, group = all_nba_dummy, color = as.factor(all_nba_dummy))) +
+  geom_text(data = df |> filter(str_like(player, "devin boo%"),
+                                season_start_year == 2023), aes(label = player), color = "red")
+
+df |> 
+  filter(z_score_mp >= 0,
+         season_start_year == 2023) |> 
+  ggplot(aes(x = z_score_vorp, group = all_nba_dummy, fill = as.factor(all_nba_dummy))
+         ) +
+  geom_vline(xintercept = df |> filter(str_like(player, "lebron ja%"),
+                                       season_start_year == 2023
+                                       ) |> 
+               select(z_score_vorp) |> max()
+             ) +
+  geom_density(alpha = 0.5) 
+
+```
+
+
+# TODO:
+# model
+```{r}
+
+```
+
+
+
+
