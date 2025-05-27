@@ -7,20 +7,24 @@ editor_options:
 ---
 
 # import libraries
+
 ```{r}
 library(tidyverse)
+library(tidymodels)
 library(brms)
 ```
 
 # cleaning data
+
 ## import data
+
 ```{r}
 # data from last run
 df <- read_csv("~/Documents/Data Science/R/all_nba_project/2024/data/per_100_and_adv_79_23.csv")
 ```
 
-
 ## clean data (adding in 2023 All NBA players)
+
 ```{r}
 # add in 2023 all-nba players
 all_nba_2023 <- c("gilgesh01", "jokicni01", "doncilu01", "antetgi01", "tatumja01",
@@ -45,8 +49,8 @@ df <- df |>
 # write_csv(df, "~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
 ```
 
-
 ## import data (with 2023 all-nba tags now added)
+
 ```{r}
 # import data
 df <- read_csv("~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and_adv_79_23.csv")
@@ -60,6 +64,7 @@ df$all_nba_dummy |> sum()
 ```
 
 ## clean 1979 - 2023 data (removing normalized columns and replacing them with z-score columns)
+
 ```{r}
 # remove normalized (0-1) columns and use z-scores instead
 z_score_func <- function(x, na.rm = FALSE) {
@@ -89,10 +94,8 @@ z_score_df <- z_score_df |>
 
 ```
 
-
-
-
 # import data
+
 ```{r}
 # import data that now has
 # 1. 2023 All NBA team players
@@ -101,20 +104,118 @@ df <- read_csv("~/Documents/Data Science/R/all_nba_project/2025/data/per_100_and
 ```
 
 # TODO:
+
 # clean 2024 data
+
 ```{r}
 # import data (per 100 and adv)
-
+per_100_24 <- read_csv("data/per_100_2024.csv")
+adv_24 <- read_csv("data/adv_2024.csv")
 
 # clean 2024 data (look at 2024 .qmd for cleaning reference)
+### Per 100
+per_100_import_and_cleaning <- function(df) {
+  # remove normalized (0-1) columns and use z-scores instead
+  z_score_func <- function(x, na.rm = FALSE) {
+    (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+  }
+  
+  # data cleaning
+  df <- df |>
+    # removing Rk column
+    select(-Rk) |>
+    # grouping by players
+    group_by(Player) |>
+    filter(# filter players with "TOT" or players who have played for one team
+      Team == "2TM" | n_distinct(Team) <= 1) |>
+    # ungroup data
+    ungroup() |>
+    mutate(# normalizing data from 0-10
+      across(where(is.numeric), ~ z_score_func(.x, na.rm = T), .names = "z_score_{col}"),
+      # adding season start year
+      season_start_year = 2024) |>
+    # relocating season_start_year to first column
+    relocate(season_start_year)
+  
+  # return df
+  return(df)
+}
+
+per_100_24_clean <- per_100_import_and_cleaning(per_100_24) |> janitor::clean_names()
+
+### adv
+adv_stats_import_and_cleaning <- function(df) {
+  # remove normalized (0-1) columns and use z-scores instead
+  z_score_func <- function(x, na.rm = FALSE) {
+    (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+  }
+  
+  # data cleaning
+  df <- df |>
+    # removing Rk column
+    select(-Rk) |>
+    # grouping by players
+    group_by(Player) |>
+    filter(# filter players with "TOT" or players who haved played for one team
+      Team == "2TM" | n_distinct(Team) <= 1) |>
+    # ungrouping data
+    ungroup() |>
+    mutate(# normalizing data from 0-10
+      across(where(is.numeric), ~ z_score_func(.x, na.rm = T), .names = "z_score_{col}"),
+      # adding season start year
+      season_start_year = 2024) |>
+    # relocating season_start_year to first column
+    relocate(season_start_year)
+  
+  return(df)
+}
+
+adv_24_clean <- adv_stats_import_and_cleaning(adv_24) |> janitor::clean_names()
+
+### combine columns
+df_2024 <- per_100_24_clean |> 
+  left_join(adv_24_clean, join_by(season_start_year == season_start_year,
+                                  player == player,
+                                  age == age,
+                                  team == team,
+                                  pos == pos,
+                                  g == g,
+                                  gs == gs,
+                                  mp == mp,
+                                  player_additional == player_additional,
+                                  z_score_age == z_score_age,
+                                  z_score_g == z_score_g,
+                                  z_score_gs == z_score_gs,
+                                  z_score_mp == z_score_mp,
+                                  awards == awards)) |> 
+  mutate(all_nba_dummy = 0) |> 
+  select(-awards)
 
 
 # append 2024 rows to df
+df_v2 <- df |> 
+  rename(z_score_3p = z_score_x3p,
+         z_score_3pa = z_score_x3pa,
+         z_score_3p_percent = z_score_x3p_percent,
+         z_score_2p = z_score_x2p,
+         z_score_2pa = z_score_x2pa,
+         z_score_2p_percent = z_score_x2p_percent,
+         z_score_3p_ar = z_score_x3p_ar,
+         team = tm)
+
+
+df_2024 <- df_2024 |> relocate(all_nba_dummy, .before = z_score_age)
+
+
+df_v3 <- df_v2 |> 
+  bind_rows(df_2024) |> 
+  select(-e_fg_percent, -z_score_e_fg_percent)
 ```
 
-
 # EDA
+
 ## correlation to All NBA
+
 ```{r}
 cor_info <- df |> select(starts_with("z_score"), all_nba_dummy) |> drop_na() |> cor()
 
@@ -137,6 +238,7 @@ ggplot(data = cor_df, aes(x = fct_reorder(metric, cor_value), y = cor_value)) +
 ```
 
 # see highly correlated metrics ranked by season
+
 ```{r}
 df |> 
   group_by(season_start_year) |> 
@@ -148,9 +250,10 @@ df |>
 
 ```
 
-
 ## best VORP, WS, PER, and BMP ever
+
 ### NOTE VORP includes BMP so maybe have to drop it in model
+
 ```{r}
 df |> 
   mutate(label = paste0(season_start_year, ": ", player)) |> 
@@ -163,6 +266,7 @@ df |>
 ```
 
 ## plot VORP, WS, PER, and BMP by outcome variable
+
 ```{r}
 df |> 
   filter(z_score_mp >= 0,
@@ -189,9 +293,104 @@ df |>
 ```
 
 
-# TODO:
 # model
+## random forest classification model
 ```{r}
+# get training and test data
+training_data <- df_v3 |> 
+  filter(season_start_year != 2024) |> 
+  mutate(all_nba_dummy = factor(all_nba_dummy)) |> 
+  select(season_start_year, player_additional, starts_with("z_score_"), all_nba_dummy)
+
+test_data <- df_v3 |> filter(season_start_year == 2024)
+
+# set up recipe
+nba_recipe <- recipe(all_nba_dummy ~ ., data = training_data) |> 
+  update_role(player_additional, season_start_year, new_role = "id") |> 
+  step_zv(all_predictors()) # remove zero variance predictors
+
+# specify model
+rf_spec <- rand_forest(mtry = 5, trees = 1000, min_n = 5) |> 
+  set_engine("ranger", importance = "impurity") |> 
+  set_mode("classification")
+
+# create workflow
+rf_workflow <- workflow() |> 
+  add_model(rf_spec) |> 
+  add_recipe(nba_recipe)
+
+# fit the model
+rf_fit <- rf_workflow |> 
+  fit(data = training_data)
+
+# predict 2024 all nba
+nba_2024_pred <- predict(rf_fit, new_data = test_data, type = "prob") |> 
+  bind_cols(test_data |> select(player_additional, season_start_year)) |> 
+  mutate(pred_all_nba = .pred_1)
+
+# get top players
+nba_2024_pred_df <- nba_2024_pred |> 
+  select(player_additional, season_start_year, pred_all_nba) |> 
+  arrange(desc(pred_all_nba))
+
+final_2024_preds_df <- test_data |> 
+  left_join(nba_2024_pred_df, join_by(player_additional == player_additional,
+                                      season_start_year == season_start_year))
+
+final_2024_preds_df |> 
+  select(player, pos, age, team, g, gs, pred_all_nba) |> 
+  filter(g >= 65) |> 
+  arrange(-pred_all_nba) |> 
+  head(15) |> View()
+
+
+
+```
+
+## brms (bayesian regression model using stan)
+```{r}
+# setting up predictor vars, formula string
+predictor_vars <- names(training_data)[!(names(training_data) %in% c("player_additional", 
+                                                             "season_start_year",
+                                                             "all_nba_dummy"))]
+formula_str <- paste("all_nba_dummy ~", paste(predictor_vars, collapse = " + "))
+brms_formula <- bf(as.formula(formula_str))
+
+# set up model and fit the model
+set.seed(562)
+brm_fit <- brm(
+  formula = brms_formula,
+  data = training_data,
+  family = bernoulli(),
+  chains = 4,
+  cores = 4,
+  iter = 100,
+  control = list(adapt_delta = 0.95)
+)
+
+# predict
+preds_df <- posterior_epred(brm_fit, newdata = test_data) |> as.data.frame() 
+
+# make data longer
+preds_longer_df <- preds_df |> pivot_longer(cols = everything())
+
+# take avg and sort by row n
+preds_final <- preds_longer_df |> 
+  group_by(name) |> 
+  summarise(avg_value = mean(value)) |> 
+  ungroup() |> 
+  mutate(row_n = extract_numeric(name)) |> 
+  arrange(row_n)
+
+
+# final results
+test_data |> 
+  select(player, pos, age, team, g, gs) |> 
+  bind_cols(preds_final) |> 
+  mutate(avg_value = round(avg_value, 5)) |> 
+  filter(g >= 65) |> View()
+
+
 
 ```
 
