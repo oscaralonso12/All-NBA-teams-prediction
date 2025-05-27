@@ -366,7 +366,7 @@ brm_fit <- brm(
   family = bernoulli(),
   chains = 4,
   cores = 4,
-  iter = 50,
+  iter = 5000,
   control = list(adapt_delta = 0.95)
 )
 
@@ -386,12 +386,57 @@ preds_final <- preds_longer_df |>
 
 
 # final results
-test_data |> 
+final_table <- test_data |> 
   select(player, pos, age, team, g, gs) |> 
   bind_cols(preds_final) |> 
   mutate(avg_value = round(avg_value, 5)) |> 
-  filter(g >= 65) |> View()
+  filter(g >= 65) |> 
+  arrange(-avg_value) |> 
+  head(15) |> 
+  select(player, pos, team, avg_value)
 
 
 
 ```
+
+
+
+# create table
+```{r}
+# importing library
+library(gt)
+
+# data processing
+all_nba_2024 <- final_table |> 
+  select(player, pos, team, avg_value) |> 
+  mutate(all_nba_team = case_when(
+           row_number() <= 5 ~ "1st Team",
+           row_number() > 5 & row_number() <= 10 ~ "2nd Team",
+           row_number() > 10 ~ "3rd Team"
+         )) |> 
+  relocate(all_nba_team, .before = player)
+
+# create table
+gt_tbl <- gt(all_nba_2024) 
+
+# format table
+gt_tbl |> 
+  gt::tab_header(md("**All-NBA 2024-2025 Team Predictions**")) |> 
+  gt::cols_label(
+    all_nba_team = md("**All-NBA Team**"),
+    player = md("**Player**"),
+    pos = md("**Position**"),
+    team = md("**Team**"),
+    avg_value = md("**All-NBA Probability**")
+  ) |> 
+  cols_align(
+    align = "center"
+  ) |> 
+  data_color(
+    columns = all_nba_team,
+    target_columns = everything(),
+    palette = "Blues"
+  )
+```
+
+
