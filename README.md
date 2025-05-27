@@ -13,7 +13,7 @@ The data used for this analysis was created by scraping box score, advanced stat
 - Test data includes only players who played at least 65 games in the 2024-2025 season.
 
 ## Model Building
-- A Bayesian logistic regression model is fit using the brms package (family = bernoulli()), with predictors including season-normalized advanced stats such as VORP, Win Shares, and PER.
+- A Bayesian logistic regression model is fit using the brms package, with predictors including season-normalized advanced stats such as VORP, Win Shares, and PER.
 - The model is trained on historical data from 1979 through 2023.
 - Posterior predictions are generated for players in the 2024–2025 season.
 - For each player, the model estimates the probability of being selected to an All-NBA team.
