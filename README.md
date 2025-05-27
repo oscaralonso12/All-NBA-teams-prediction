@@ -1,6 +1,6 @@
 # All-NBA 2024-2025 Team Predictions
 
-This repository contains code for predicting the All-NBA teams for the 2023–2024 NBA season using a Bayesian logistic regression model built with the `brms` package in R.
+This repository contains code for predicting the All-NBA teams for the 2024–2025 NBA season using a Bayesian logistic regression model built with the `brms` package in R.
 
 ## Dataset
 The data used for this analysis was created by scraping box score, advanced stats, and historical All-NBA teams from Basketball Reference since the 1979 NBA season. The dataset includes various player statistics, including points, assists, rebounds, steals, blocks, player efficiency rating (PER), true shooting percentage (TS%), usage percentage (USG%), and win shares (WS). The analysis focuses on seasons starting from 1979 onwards, coinciding with the introduction of the NBA 3-point line.
@@ -9,7 +9,7 @@ The data used for this analysis was created by scraping box score, advanced stat
 ## Data Preparation
 - All numerical features are normalized using z-scores within each season, so that each stat reflects how a player compares to their peers in the same year.
 - The full dataset is split into training and test datasets.
-- Training data excludes the 2024-2025 season.
+- Training data excludes the 2024-2025 season since it's the season we are testing.
 - Test data includes only players who played at least 65 games in the 2024-2025 season.
 
 ## Model Building
